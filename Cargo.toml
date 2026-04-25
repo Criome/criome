@@ -1,0 +1,30 @@
+[package]
+name         = "criome"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.85"
+license      = "MIT OR Apache-2.0"
+repository   = "https://github.com/LiGoldragon/criome"
+description  = "criome — sema's engine. Receives signal frames over UDS from nexus; runs the validator pipeline (schema → refs → invariants → permissions → write → cascade); applies accepted mutations to sema; dispatches lojix-schema verbs to the lojix daemon for effects."
+
+[lib]
+name = "criome"
+path = "src/lib.rs"
+
+[[bin]]
+name = "criome"
+path = "src/main.rs"
+
+[dependencies]
+nexus-schema = { git = "https://github.com/LiGoldragon/nexus-schema", branch = "main" }
+signal = { git = "https://github.com/LiGoldragon/signal", branch = "main" }
+lojix-schema = { git = "https://github.com/LiGoldragon/lojix-schema", branch = "main" }
+ractor = "0.15"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "net"] }
+thiserror = "2"
+clap = { version = "4", features = ["derive"] }
+rkyv = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
+
+[lints.rust]
+unused = "allow"
+dead_code = "allow"

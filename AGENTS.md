@@ -18,19 +18,19 @@ Current (MVP-era, aligned with
 
 ```
 criome          runtime — hosts sema worlds; three daemons
-                nexus (text↔rkyv), criomed (sema's engine),
-                lojixd (effects executor)
+                nexus (text↔rkyv), criome (sema's engine),
+                lojix (effects executor)
 sema            records DB — content-addressed logical code records
-                (Fn, Struct, Expr, Type, …); owned by criomed;
+                (Fn, Struct, Expr, Type, …); owned by criome;
                 redb-backed
 lojix-store     content-addressed filesystem — a nix-store analogue
                 hashed by blake3; holds real unix files and
                 directory trees (compiled binary trees, user
                 attachments); separate index DB for metadata;
-                owned by lojixd; you `exec` from hash-derived
+                owned by lojix; you `exec` from hash-derived
                 paths directly — no extraction step
-nexus           protocol — how clients talk to criomed (parsed
-                by nexus; rkyv to criomed)
+nexus           protocol — how clients talk to criome (parsed
+                by nexus; rkyv to criome)
 nota            language — canonical text grammar nota ⊂ nexus
 ```
 

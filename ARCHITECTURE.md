@@ -8,7 +8,7 @@ content-addressed records that hold every concept the engine
 reasons about. **Nexus is the bridge** that lets the legacy
 untyped-text world create and interact with sema — humans and
 LLMs author nexus text; nexus parses it into signal rkyv;
-criomed validates and commits to sema. **Lojix is the compiler
+criome validates and commits to sema. **Lojix is the compiler
 infrastructure** — build, store, deploy of artifacts referenced
 from sema by hash.
 
@@ -27,7 +27,7 @@ records in sema. The records are stored in rkyv, content-
 addressed by blake3. The rest of the engine exists to serve
 sema:
 
-- **criomed** is sema's engine. It receives every request,
+- **criome** is sema's engine. It receives every request,
   validates it (schema, references, permissions, invariants),
   and applies the change to sema. Rules and derivations are
   themselves records; cascades settle inside sema. Nothing
@@ -39,7 +39,7 @@ sema:
   envelopes (`Assert`, `Mutate`, `Retract`, `Query`,
   `Compile`, …) and serialises replies back. Two faces of
   one language; the translation is mechanical.
-- **lojixd** is the hands. It performs effects sema can't
+- **lojix** is the hands. It performs effects sema can't
   (spawning `nix` subprocesses; reading and writing
   filesystem paths; materialising files). Inputs are plan
   records read from sema; outputs become outcome records
@@ -71,7 +71,7 @@ categories.
 
 **Bootstrap is rung by rung.** The engine bootstraps using
 its own primitives starting from rung 0. There is no "before
-the engine runs" mode; criomed runs from the first instant,
+the engine runs" mode; criome runs from the first instant,
 sema starts empty, nexus messages populate it. Each rung's
 capability comes from the data already loaded; that
 capability is what populates the next rung. See §10.
@@ -94,7 +94,7 @@ want in user-space, but only nexus requests reach the engine.
 
 Sema is rkyv (binary, content-addressed). **Nexus is the text
 request language**; **signal is its rkyv form**, emitted by
-nexus and consumed by criomed. Parsing nexus produces signal
+nexus and consumed by criome. Parsing nexus produces signal
 envelopes; it does not produce sema directly. There are no
 "nexus records." There is sema (rkyv records described by
 KindDecl), and there are signal messages (rkyv envelopes
@@ -107,8 +107,8 @@ rows are in the DB's on-disk format. No one calls a row a
 ### Invariant C — Sema is the concern; everything orbits
 
 If a component does not serve sema directly, it is not core.
-criomed = sema's engine / guardian. nexus = sema's
-text-request translator. lojixd = executor for effects sema
+criome = sema's engine / guardian. nexus = sema's
+text-request translator. lojix = executor for effects sema
 can't perform directly — outcomes return as sema. rsc = sema →
 `.rs` projector. lojix-store = artifact files, referenced
 *from* sema.
@@ -125,7 +125,7 @@ can't perform directly — outcomes return as sema. rsc = sema →
       │           (CriomeRequest::Assert / Mutate / Retract /
       │            Query / Compile / Subscribe / …)
       ▼
-  criomed ─────── validates:
+  criome ─────── validates:
       │            • schema conformance
       │            • reference resolution (slot-refs exist)
       │            • invariant preservation (Rule records with `is_must_hold`)
@@ -134,7 +134,7 @@ can't perform directly — outcomes return as sema. rsc = sema →
       │          if valid → apply to sema; otherwise → reject
       │
       ▼
-  criomed replies via signal rkyv
+  criome replies via signal rkyv
       │
       ▼
   nexus ─────── rkyv → nexus text
@@ -143,15 +143,15 @@ can't perform directly — outcomes return as sema. rsc = sema →
   user reads reply
 ```
 
-**Every edit is a request.** criomed is the arbiter; assertions,
+**Every edit is a request.** criome is the arbiter; assertions,
 mutations, retractions can all be rejected. This is the
 hallucination wall: unknown names, broken references,
 schema-invalid shapes, unauthorised actions all fail here.
 
-**Genesis runs the same flow.** At first boot, criomed
+**Genesis runs the same flow.** At first boot, criome
 dispatches a `genesis.nexus` text file (shipping with the
-criomed binary) through the same path: nexus parses it,
-signal envelopes flow to criomed, the validator runs,
+criome binary) through the same path: nexus parses it,
+signal envelopes flow to criome, the validator runs,
 records land in sema. The first messages validate against
 the built-in Rust types in `criome-schema` (no in-sema
 KindDecls yet); subsequent ones validate against records
@@ -168,14 +168,14 @@ the genesis stream has already asserted. Once the
         │ ▼
      ┌─────────┐
      │ nexus  │ messenger: text ↔ rkyv only; validates syntax +
-     │         │ protocol version; forwards requests to criomed;
+     │         │ protocol version; forwards requests to criome;
      │         │ serialises replies back to text. Stateless modulo
      │         │ in-flight request correlations.
      └────┬────┘
           │ rkyv (signal contract)
           ▼
      ┌─────────┐
-     │ criomed │ sema's engine — validates, applies, cascades.
+     │ criome │ sema's engine — validates, applies, cascades.
      │         │ • receives every request; checks validity
      │         │ • writes accepted mutations to sema
      │         │ • rules cascade as records update (nothing
@@ -183,15 +183,15 @@ the genesis stream has already asserted. Once the
      │         │ • resolves RawPattern → PatternExpr
      │         │ • fires subscriptions on commits
      │         │ • reads plan records from sema; dispatches
-     │         │   execution verbs to lojixd
+     │         │   execution verbs to lojix
      │         │ • signs capability tokens; tracks reachability
      │         │   for lojix-store GC
      │         │ • never touches binary bytes itself
      └────┬────┘
-          │ rkyv (lojix-msg — concrete "do this" verbs)
+          │ rkyv (lojix-schema — concrete "do this" verbs)
           ▼
      ┌──────────┐   owns lojix-store directory
-     │  lojixd  │   (lojix family; thin executor; no evaluation)
+     │  lojix  │   (lojix family; thin executor; no evaluation)
      │          │ internal actors:
      │          │   • NixRunner (spawns nix/nixos-rebuild;
      │          │     cargo runs inside via crane, not directly)
@@ -212,10 +212,10 @@ the genesis stream has already asserted. Once the
 
 - Text crosses only at nexus's boundary. Internal daemon-
   to-daemon messages are rkyv.
-- No daemon-to-daemon path routes bulk data through criomed —
-  when forge work inside lojixd writes to lojix-store, it does
-  so in-process under a criomed-signed capability token; no
-  bytes ever cross criomed.
+- No daemon-to-daemon path routes bulk data through criome —
+  when forge work inside lojix writes to lojix-store, it does
+  so in-process under a criome-signed capability token; no
+  bytes ever cross criome.
 - Criomed never sees compiled binary bytes; it only records
   their hashes (as slot-refs resolved to blake3 via sema) in
   sema.
@@ -228,7 +228,7 @@ the genesis stream has already asserted. Once the
 
 ### sema — records database
 
-- **Owner**: criomed.
+- **Owner**: criome.
 - **Backend**: redb-backed, content-addressed records keyed
   by blake3 of their canonical rkyv encoding.
 - **Reference model**: records store **slot-refs** (`Slot(u64)`),
@@ -257,7 +257,7 @@ compiled binary lives at a hash-derived path; you `exec` it
 directly.
 
 nix produces artifacts into `/nix/store` during the build.
-lojixd immediately bundles them into `~/.lojix/store/` (copy
+lojix immediately bundles them into `~/.lojix/store/` (copy
 closure with RPATH rewrite) and returns the lojix-store hash.
 **sema records reference lojix-store hashes as canonical
 identity** — `/nix/store` is a transient build-intermediate,
@@ -269,10 +269,10 @@ The gradualist path "nix builds; lojix-store stores; loosen
 dep on nix over time" is strictly safer than "nix forever
 until Big Bang replace."
 
-- **Owner**: lojixd.
+- **Owner**: lojix.
 - **Layout**: hash-keyed subdirectory per store entry, close
   to nix's `/nix/store/<hash>-<name>/` tree.
-- **Index DB**: lojixd-owned redb table mapping
+- **Index DB**: lojix-owned redb table mapping
   `blake3 → { path, metadata, reachability }`. The index does
   not contain the files; it maps to them.
 - **Holds**: compiled binaries and their runtime trees;
@@ -280,13 +280,13 @@ until Big Bang replace."
   on disk.
 - **No typing**. The type of a store entry is known only
   through the sema record that references its hash.
-- **Access control**: capability tokens, signed by criomed.
+- **Access control**: capability tokens, signed by criome.
 
 ### Relationship
 
 Sema records carry `StoreEntryRef` (blake3) fields pointing at
 lojix-store entries. Criomed maintains the reachability view
-and drives GC; lojixd resolves hashes to filesystem paths;
+and drives GC; lojix resolves hashes to filesystem paths;
 binaries are `exec`'d directly from their store path (no
 extraction, no copy, no `Launch` verb).
 
@@ -305,7 +305,7 @@ and in mentci's reports; this file only names.
   flake output or inline nix expression.
 - **OpusDep** — opus → {opus | derivation} link.
 - **Slot** — `u64` content-agnostic identity. Counter-minted
-  by criomed with freelist-reuse. Seed range `[0, 1024)`
+  by criome with freelist-reuse. Seed range `[0, 1024)`
   reserved.
 - **SlotBinding** — slot-keyed binding to current content
   hash and global display name. Bitemporal; slot-reuse is
@@ -315,16 +315,16 @@ and in mentci's reports; this file only names.
 - **RawPattern** — wire form of a nexus pattern, carrying
   user-facing names. Transient on signal.
 - **PatternExpr** — resolved form, carrying slot-refs. Pinned
-  to a sema snapshot. Internal to criomed.
+  to a sema snapshot. Internal to criome.
 - **Frame / Body / Request / Reply** — signal envelope and
   protocol verbs (lives in [signal](https://github.com/LiGoldragon/signal)).
-- **lojix-msg verbs** — concrete execution in criomed→lojixd
+- **lojix-schema verbs** — concrete execution in criome→lojix
   direction: **RunNix** (primary compile + package builder,
   via crane + fenix), **BundleIntoLojixStore** (copy /nix/store
   output into lojix-store with RPATH rewrite, returns blake3
   hash), RunNixosRebuild (deploy), PutStoreEntry, GetStorePath,
   MaterializeFiles, DeleteStoreEntry. No `CompileRequest {
-  opus: OpusId }` — criomed plans; lojixd executes.
+  opus: OpusId }` — criome plans; lojix executes.
 
 ---
 
@@ -337,11 +337,11 @@ and in mentci's reports; this file only names.
         ▼
   nexus parses → RawPattern; wraps as signal::Query
         ▼
-  criomed validates; resolver(RawPattern, sema snapshot) → PatternExpr
+  criome validates; resolver(RawPattern, sema snapshot) → PatternExpr
         ▼
   matcher runs; records returned
         ▼
-  criomed replies via rkyv
+  criome replies via rkyv
         ▼
   nexus serialises reply to nexus text
         ▼
@@ -353,22 +353,22 @@ and in mentci's reports; this file only names.
 ```
  user: (Mutate (Fn :slot 42 :body (Block …)))
         ▼
- nexus → criomed (signal::Mutate)
+ nexus → criome (signal::Mutate)
         ▼
- criomed validates:
+ criome validates:
    • kind well-formed?
    • all slot-refs in the body resolve to existing slots?
    • author authorised? (caps / BLS post-MVP)
    • rule engine permits? (e.g., not mutating a seed-protected
      record)
         ▼ (if any check fails → reject with Diagnostic)
- criomed writes new content to sema:
+ criome writes new content to sema:
    • per-kind ChangeLogEntry appended
    • SlotBinding updated with new current-hash
    • subscriptions on slot 42 fire → downstream cascades
      re-derive
         ▼
- criomed replies success
+ criome replies success
 ```
 
 ### Compile + self-host loop
@@ -380,20 +380,20 @@ Edit-time (requests accumulate):
 
 Run-time (plan dispatch):
 - User issues `(Compile (Opus :slot N))`.
-- criomed reads the Opus + transitive OpusDeps from sema.
+- criome reads the Opus + transitive OpusDeps from sema.
 - rsc projects records → scratch workdir containing `.rs` +
   `Cargo.toml` + `flake.nix` (crane + fenix call).
-- criomed emits `RunNix { flake_ref, attr, overrides, target }`
-  to lojixd.
-- lojixd invokes `nix build`; nix/crane run cargo + rustc with
+- criome emits `RunNix { flake_ref, attr, overrides, target }`
+  to lojix.
+- lojix invokes `nix build`; nix/crane run cargo + rustc with
   the fenix-pinned toolchain; proc-macros expand in rustc;
   output lands in `/nix/store`.
-- lojixd runs `BundleIntoLojixStore` on the nix output: copy-
+- lojix runs `BundleIntoLojixStore` on the nix output: copy-
   closure, RPATH rewrite via patchelf, deterministic bundle,
   blake3 hash, write tree under `~/.lojix/store/<blake3>/`.
-- lojixd replies with `{ store_entry_hash, narhash,
+- lojix replies with `{ store_entry_hash, narhash,
   wall_ms }`.
-- criomed asserts `CompiledBinary { opus, store_entry_hash,
+- criome asserts `CompiledBinary { opus, store_entry_hash,
   narhash, toolchain_pin, … }` to sema. The canonical identity
   is `store_entry_hash`; narhash is kept for nix cache lookup.
 
@@ -417,19 +417,19 @@ this section is the architectural roles.
   declarations: Fn, Struct, Opus, SlotBinding, MemberEntry,
   Rule, ChangeLogEntry, …; plus nexus language IR — patterns,
   query operators, edit verbs, diagnostics).
-- **Layer 2 — contract crates**: signal (nexus↔criomed;
-  requests + replies + handshake), lojix-msg (criomed↔lojixd;
+- **Layer 2 — contract crates**: signal (nexus↔criome;
+  requests + replies + handshake), lojix-schema (criome↔lojix;
   execution verbs).
 - **Layer 3 — storage**: sema (records DB — redb-backed;
-  owned by criomed), lojix-store (content-addressed
-  filesystem — owned by lojixd; includes a reader library).
-- **Layer 4 — daemons**: nexus (translator), criomed (sema's
-  engine), lojixd (executor).
+  owned by criome), lojix-store (content-addressed
+  filesystem — owned by lojix; includes a reader library).
+- **Layer 4 — daemons**: nexus (translator), criome (sema's
+  engine), lojix (executor).
 - **Layer 5 — clients + projectors**: nexus-cli (the text
-  client), rsc (sema → `.rs` projector; linked by lojixd).
+  client), rsc (sema → `.rs` projector; linked by lojix).
 - **Spec-only (terminal state)**: lojix (namespace README).
 
-Currently `lojix-msg`, `criomed`, `lojixd` are CANON-MISSING —
+Currently `lojix-schema`, `criome`, `lojix` are CANON-MISSING —
 not yet scaffolded. See workspace-manifest in mentci for
 status.
 
@@ -441,7 +441,7 @@ status.
 
 ### Three-pillar framing
 
-- **criome** — the runtime (nexus, criomed, lojixd; the
+- **criome** — the runtime (nexus, criome, lojix; the
   daemon graph).
 - **sema** — the records (the heart).
 - **lojix** — the artifacts pillar (build, compile, store,
@@ -452,7 +452,7 @@ criome ⊇ {sema, lojix}. nexus is the bridge to legacy text
 
 **Lojix family membership** is orthogonal to layer. A crate is
 lojix-family iff it participates in the content-addressed
-typed build/store/deploy pipeline. `lojixd` is the only
+typed build/store/deploy pipeline. `lojix` is the only
 current lojix-family daemon.
 
 **Shelved**: `arbor` (prolly-tree versioning) — post-MVP.
@@ -495,7 +495,7 @@ Foundational rules. Every session follows these.
 - **Rust is only an output.** No `.rs` → sema parsing. rsc
   emits one-way.
 - **Nix is the build backend until we replace it.** Compile
-  plans become `RunNix` invocations (crane + fenix); lojixd
+  plans become `RunNix` invocations (crane + fenix); lojix
   spawns `nix build`. Direct rustc orchestration is a post-
   nix-replacement concern. rsc emits `.rs` + `Cargo.toml` +
   `flake.nix`; nix drives the rest.
@@ -529,7 +529,7 @@ Foundational rules. Every session follows these.
 - **All-rkyv except nexus text.** The only non-rkyv messaging
   surface is the nexus *text* payload (carried inside a
   client-msg `Send`). Every other wire / storage format —
-  client-msg, signal, future criome-net, future lojix-msg,
+  client-msg, signal, future criome-net, future lojix-schema,
   sema records, lojix-store index entries — is rkyv. No
   compromise. All rkyv-using crates pin the *same* feature
   set so archived types interop:
@@ -537,11 +537,11 @@ Foundational rules. Every session follows these.
   "little_endian", "pointer_width_32", "unaligned"]`. Pinned
   to rkyv 0.8.x. Pattern reference:
   [nexus-schema](https://github.com/LiGoldragon/nexus-schema).
-- **Every edit is a request.** criomed validates; requests can
+- **Every edit is a request.** criome validates; requests can
   be rejected; this is the hallucination wall.
 - **Bootstrap rung by rung.** The engine bootstraps using its
   own primitives, starting from rung 0. There is no "before
-  the engine runs" mode; criomed runs from the first instant,
+  the engine runs" mode; criome runs from the first instant,
   with sema initially empty. Nexus messages populate the
   initial versions of the database — including seed records
   via `genesis.nexus`. Each rung's capability comes from the
@@ -558,7 +558,7 @@ Foundational rules. Every session follows these.
   are real files.
 - **Criomed is the overlord** of lojix-store. Tracks
   reachability; signs tokens; directs GC.
-- **lojixd is for effects sema can't do.** Its inputs are plan
+- **lojix is for effects sema can't do.** Its inputs are plan
   records; its outputs are outcome records. It never sees an
   Opus directly.
 - **No backward compat.** The engine is being born. Rename,
@@ -588,7 +588,7 @@ recurrence. Add to this list when Li rejects a new framing.
   workshop," or "self-hosted-self" underestimate the project.
 - **Sema is local; reality is subjective.** There is no global
   sema, no federated-global database, no single logical truth.
-  Each criomed holds a subjective view; instances communicate,
+  Each criome holds a subjective view; instances communicate,
   agree, disagree, and negotiate to reach agreement. "Global
   database," "global blockchain," and "federated global sema"
   are wrong framings.
@@ -607,7 +607,7 @@ recurrence. Add to this list when Li rejects a new framing.
   predecessors either.
 - **Nexus is the agent interface.** "Legibility to agents" is
   not a separate design axis. Nexus is how agents (LLMs,
-  humans, scripts) interact with criome; text in, criomed-
+  humans, scripts) interact with criome; text in, criome-
   validated records out.
 
 ### Reject-loud rule
